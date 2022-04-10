@@ -1,23 +1,18 @@
 import numpy as np
 import pandas as pd
 import scipy as sp
+from sklearn import feature_extraction
 
 ################################################################################
 #                            UTILS FUNCTIONS                                   #
 ################################################################################
 
-def cast_list_as_strings(mylist):
+def preprocess(strings):
     """
-    return a list of strings
+    Takes a list and preprocesses and tokenizes strings
     """
-    #assert isinstance(mylist, list), f"the input mylist should be a list it is {type(mylist)}"
-    mylist_of_strings = []
-    for x in mylist:
-        mylist_of_strings.append(str(x))
-
-    return mylist_of_strings
-
-
+    transform = feature_extraction.text.CountVectorizer().build_analyzer()
+    return [transform(str(s)) for s in strings]
 
 def get_features_from_df(df, count_vectorizer):
     """
