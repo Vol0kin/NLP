@@ -1,7 +1,11 @@
 import numpy as np
 import pandas as pd
 import scipy as sp
-from sklearn import feature_extraction
+
+from collections import defaultdict
+
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.base import BaseEstimator, TransformerMixin
 
 ################################################################################
 #                            UTILS FUNCTIONS                                   #
@@ -11,8 +15,21 @@ def preprocess(strings):
     """
     Takes a list and preprocesses and tokenizes strings
     """
-    transform = feature_extraction.text.CountVectorizer().build_analyzer()
+    transform = CountVectorizer().build_analyzer()
     return [transform(str(s)) for s in strings]
+
+
+def cast_list_as_strings(mylist):
+    """
+    return a list of strings
+    """
+    #assert isinstance(mylist, list), f"the input mylist should be a list it is {type(mylist)}"
+    mylist_of_strings = []
+    for x in mylist:
+        mylist_of_strings.append(str(x))
+
+    return mylist_of_strings
+
 
 def get_features_from_df(df, count_vectorizer):
     """
@@ -46,3 +63,90 @@ def get_mistakes(clf, X_q1q2, y):
         print("no mistakes in this df")
     else:
         return incorrect_indices, predictions
+
+################################################################################
+#                       CUSTOM TF-IDF VECTORIZER                               #
+################################################################################
+
+class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
+    def fit(self, X):
+        X_preprocessed = preprocess(X)
+        n_docs = len(X)
+
+        i = 0
+        self.vocabulary = {}
+        word_counts = defaultdict(int)
+        
+        for doc in X_preprocessed:
+            words_in_document = []
+
+            for word in doc:
+                if word not in self.vocabulary:
+                    self.vocabulary[word] = i
+                    i += 1
+                
+                if word not in words_in_document:
+                    word_counts[word] += 1
+                    words_in_document.append(word)
+        
+        word_count_array = np.zeros(len(self.vocabulary))
+        
+        for word, idx in self.vocabulary.items():
+            word_count_array[idx] = word_counts[word]
+        
+        # NOTE: This is the smoothed formula for the inverse document frequency
+        # This way, the lower bound of the idf is 0.
+        # sklearn uses idf = log((1 + |X|) / (1 + |X_w|)) + 1
+        self.idf = np.log((n_docs) / (1 + word_count_array)) + 1
+
+        return self
+    
+
+    def transform(self, X):
+        X_preprocessed = preprocess(X)
+
+        data = []
+        ind_col = []
+        ind_ptr = [0]
+        
+        for doc in X_preprocessed:
+            # Create a bag of words representation for the document
+            # It will contain the sum of the tf-idf values
+            bow_doc = defaultdict(float)
+            cols = set()
+
+            for word in doc:
+                if word in self.vocabulary:
+                    idx = self.vocabulary[word]
+                    bow_doc[word] += self.idf[idx]
+                    cols.add(idx)
+            
+            # Process columns removing duplicates and keeping insertion order
+            cols = list(cols)
+
+            # Normalize BoW
+            bow_array = np.array(list(bow_doc.values()))
+            bow_norm = np.sqrt(np.dot(bow_array, bow_array))
+
+            bow_doc_normalized = [
+                bow_doc[word] / bow_norm
+                for word in bow_doc.keys()
+            ]
+
+            data.extend(bow_doc_normalized)
+            ind_col.extend(cols)
+            ind_ptr.append(len(ind_col))
+        
+        X_transformed = sp.sparse.csr_matrix(
+            (data, ind_col, ind_ptr),
+            shape=(len(X), len(self.vocabulary))
+        )
+
+        return X_transformed
+    
+
+    def fit_transform(self, X):
+        self.fit(X)
+        X_transformed = self.transform(X)
+
+        return X_transformed
