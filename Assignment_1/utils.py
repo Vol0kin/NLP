@@ -7,6 +7,8 @@ from collections import defaultdict
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.base import BaseEstimator, TransformerMixin
 
+from gensim.models import Word2Vec
+
 ################################################################################
 #                            UTILS FUNCTIONS                                   #
 ################################################################################
@@ -65,19 +67,19 @@ def get_mistakes(clf, X_q1q2, y):
         return incorrect_indices, predictions
 
 ################################################################################
-#                       CUSTOM TF-IDF VECTORIZER                               #
+#                         CUSTOM VECTORIZERS                                   #
 ################################################################################
 
 class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
     def fit(self, X):
-        X_preprocessed = preprocess(X)
-        n_docs = len(X)
+        X_processed = preprocess(X)
+        n_docs = len(X_processed)
 
         i = 0
         self.vocabulary = {}
         word_counts = defaultdict(int)
         
-        for doc in X_preprocessed:
+        for doc in X_processed:
             words_in_document = []
 
             for word in doc:
@@ -97,7 +99,7 @@ class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
         # NOTE: This is the smoothed formula for the inverse document frequency
         # This way, the lower bound of the idf is 0.
         # sklearn uses idf = log((1 + |X|) / (1 + |X_w|)) + 1
-        self.idf = np.log((n_docs) / (1 + word_count_array)) + 1
+        self.idf = np.log((n_docs) / (1 + word_count_array)) + 1       
 
         return self
     
@@ -121,7 +123,7 @@ class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
                     bow_doc[word] += self.idf[idx]
                     cols.add(idx)
             
-            # Process columns removing duplicates and keeping insertion order
+            # Retrieve columns as a list
             cols = list(cols)
 
             # Normalize BoW
@@ -141,6 +143,54 @@ class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
             (data, ind_col, ind_ptr),
             shape=(len(X), len(self.vocabulary))
         )
+
+        return X_transformed
+    
+
+    def fit_transform(self, X):
+        self.fit(X)
+        X_transformed = self.transform(X)
+
+        return X_transformed
+
+class TfIdfEmbeddingVectorizer(TfIdfCustomVectorizer):
+    def __init__(self):
+        super().__init__()
+        self.word2vec = Word2Vec.load('word2vec_quora.model')
+    
+
+    def transform(self, X):
+        X_preprocessed = preprocess(X)
+        X_transformed = []
+        
+        for doc in X_preprocessed:
+            # Create a bag of words representation for the document
+            # It will contain the sum of the tf-idf values
+            bow_doc = defaultdict(float)
+
+            for word in doc:
+                if word in self.vocabulary:
+                    idx = self.vocabulary[word]
+                    bow_doc[word] += self.idf[idx]
+
+            # Normalize BoW
+            bow_array = np.array(list(bow_doc.values()))
+            bow_norm = np.sqrt(np.dot(bow_array, bow_array))
+
+            bow_doc_normalized = {
+                word: bow_doc[word] / bow_norm
+                for word in bow_doc.keys()
+            }
+
+            # Compute sentence embedding as weighted sum of word embeddings
+            doc_embedding = np.zeros(self.word2vec.vector_size)
+
+            for word, tfidf in bow_doc_normalized.items():
+                doc_embedding = doc_embedding + self.word2vec.wv[word] * tfidf
+            
+            X_transformed.append(doc_embedding)
+        
+        X_transformed = np.array(X_transformed)
 
         return X_transformed
     
