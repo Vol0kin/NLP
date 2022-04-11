@@ -80,16 +80,17 @@ class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
         word_counts = defaultdict(int)
         
         for doc in X_processed:
-            words_in_document = []
+            words_in_document = set()
 
             for word in doc:
                 if word not in self.vocabulary:
                     self.vocabulary[word] = i
                     i += 1
                 
-                if word not in words_in_document:
-                    word_counts[word] += 1
-                    words_in_document.append(word)
+                words_in_document.add(word)
+
+            for word in words_in_document:
+                word_counts[word] += 1
         
         word_count_array = np.zeros(len(self.vocabulary))
         
