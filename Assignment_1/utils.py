@@ -71,15 +71,14 @@ def get_mistakes(clf, X_q1q2, y):
 ################################################################################
 
 class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
-    def fit(self, X):
-        X_processed = preprocess(X)
-        n_docs = len(X_processed)
+    def _fit(self, X):
+        n_docs = len(X)
 
         i = 0
         self.vocabulary = {}
         word_counts = defaultdict(int)
         
-        for doc in X_processed:
+        for doc in X:
             words_in_document = set()
 
             for word in doc:
@@ -100,7 +99,12 @@ class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
         # NOTE: This is the smoothed formula for the inverse document frequency
         # This way, the lower bound of the idf is 0.
         # sklearn uses idf = log((1 + |X|) / (1 + |X_w|)) + 1
-        self.idf = np.log((n_docs) / (1 + word_count_array)) + 1       
+        self.idf = np.log((n_docs) / (1 + word_count_array)) + 1
+
+
+    def fit(self, X):
+        X_processed = preprocess(X)
+        self._fit(X_processed)
 
         return self
     
@@ -152,10 +156,22 @@ class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
 
         return X_transformed
 
+
 class TfIdfEmbeddingVectorizer(TfIdfCustomVectorizer):
-    def __init__(self):
-        super().__init__()
-        self.word2vec = Word2Vec.load('word2vec_quora.model')
+    def fit(self, X):
+        X_preprocessed = preprocess(X)
+
+        # Generate vocabulary and idf values
+        self._fit(X_preprocessed)
+
+        self.word2vec = Word2Vec(
+            X_preprocessed,
+            vector_size=256,
+            window=5,
+            min_count=1,
+            workers=4,
+            epochs=10
+        )
     
 
     def transform(self, X):
