@@ -8,6 +8,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from gensim.models import Word2Vec
+import gensim.downloader as api
 
 ################################################################################
 #                            UTILS FUNCTIONS                                   #
@@ -71,15 +72,14 @@ def get_mistakes(clf, X_q1q2, y):
 ################################################################################
 
 class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
-    def fit(self, X):
-        X_processed = preprocess(X)
-        n_docs = len(X_processed)
+    def _fit(self, X):
+        n_docs = len(X)
 
         i = 0
         self.vocabulary = {}
         word_counts = defaultdict(int)
         
-        for doc in X_processed:
+        for doc in X:
             words_in_document = set()
 
             for word in doc:
@@ -100,7 +100,12 @@ class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
         # NOTE: This is the smoothed formula for the inverse document frequency
         # This way, the lower bound of the idf is 0.
         # sklearn uses idf = log((1 + |X|) / (1 + |X_w|)) + 1
-        self.idf = np.log((n_docs) / (1 + word_count_array)) + 1       
+        self.idf = np.log((n_docs) / (1 + word_count_array)) + 1
+
+
+    def fit(self, X):
+        X_processed = preprocess(X)
+        self._fit(X_processed)
 
         return self
     
@@ -152,11 +157,41 @@ class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
 
         return X_transformed
 
+
 class TfIdfEmbeddingVectorizer(TfIdfCustomVectorizer):
     def __init__(self):
         super().__init__()
-        self.word2vec = Word2Vec.load('word2vec_quora.model')
-    
+
+        # Load pretrained Word2Vec model from Google
+        self.model = api.load('word2vec-google-news-300')
+
+
+    def fit(self, X):
+        X_preprocessed = preprocess(X)
+
+        # Generate vocabulary and idf values
+        self._fit(X_preprocessed)
+
+        # Generator used for indexing
+        def index_generator(max_idx):
+            idx = 0
+
+            while idx < max_idx:
+                yield idx
+                idx += 1
+
+        reindexer = index_generator(len(self.vocabulary))
+
+        # Postprocess vocabulary by keeping only the words that appear in
+        # the word2vec model
+        # The generator is used as kind of a counter variable, which saves
+        # the need of a Python for loop
+        self.vocabulary = {
+            word: next(reindexer)
+            for word in self.vocabulary.keys()
+            if word in self.model.key_to_index
+        }
+
 
     def transform(self, X):
         X_preprocessed = preprocess(X)
@@ -168,7 +203,7 @@ class TfIdfEmbeddingVectorizer(TfIdfCustomVectorizer):
             bow_doc = defaultdict(float)
 
             for word in doc:
-                if word in self.vocabulary and word in self.word2vec.wv.key_to_index:
+                if word in self.vocabulary:
                     idx = self.vocabulary[word]
                     bow_doc[word] += self.idf[idx]
 
@@ -182,10 +217,10 @@ class TfIdfEmbeddingVectorizer(TfIdfCustomVectorizer):
             }
 
             # Compute sentence embedding as weighted sum of word embeddings
-            doc_embedding = np.zeros(self.word2vec.vector_size)
+            doc_embedding = np.zeros(self.model.vector_size)
 
             for word, tfidf in bow_doc_normalized.items():
-                doc_embedding = doc_embedding + self.word2vec.wv[word] * tfidf
+                doc_embedding = doc_embedding + self.model[word] * tfidf
             
             X_transformed.append(doc_embedding)
         
