@@ -169,7 +169,7 @@ class TfIdfEmbeddingVectorizer(TfIdfCustomVectorizer):
             bow_doc = defaultdict(float)
 
             for word in doc:
-                if word in self.vocabulary:
+                if word in self.vocabulary and word in self.word2vec.wv.key_to_index:
                     idx = self.vocabulary[word]
                     bow_doc[word] += self.idf[idx]
 
@@ -191,12 +191,5 @@ class TfIdfEmbeddingVectorizer(TfIdfCustomVectorizer):
             X_transformed.append(doc_embedding)
         
         X_transformed = np.array(X_transformed)
-
-        return X_transformed
-    
-
-    def fit_transform(self, X):
-        self.fit(X)
-        X_transformed = self.transform(X)
 
         return X_transformed
