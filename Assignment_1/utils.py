@@ -116,16 +116,11 @@ class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
             # Create a bag of words representation for the document
             # It will contain the sum of the tf-idf values
             bow_doc = defaultdict(float)
-            cols = set()
 
             for word in doc:
                 if word in self.vocabulary:
                     idx = self.vocabulary[word]
                     bow_doc[word] += self.idf[idx]
-                    cols.add(idx)
-            
-            # Retrieve columns as a list
-            cols = list(cols)
 
             # Normalize BoW
             bow_array = np.array(list(bow_doc.values()))
@@ -135,6 +130,9 @@ class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
                 bow_doc[word] / bow_norm
                 for word in bow_doc.keys()
             ]
+
+            # Get columns in which the data will be stored
+            cols = [self.vocabulary[word] for word in bow_doc.keys()]
 
             data.extend(bow_doc_normalized)
             ind_col.extend(cols)
