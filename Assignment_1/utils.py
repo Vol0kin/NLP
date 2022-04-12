@@ -159,14 +159,10 @@ class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
 
 
 class TfIdfEmbeddingVectorizer(TfIdfCustomVectorizer):
-    def __init__(self):
-        super().__init__()
-
-        # Load pretrained Word2Vec model from Google
-        self.model = api.load('word2vec-google-news-300')
-
-
     def fit(self, X):
+        # Load pretrained Word2Vec model from Google
+        model = api.load('word2vec-google-news-300')
+
         X_preprocessed = preprocess(X)
 
         # Generate vocabulary and idf values
@@ -189,8 +185,17 @@ class TfIdfEmbeddingVectorizer(TfIdfCustomVectorizer):
         self.vocabulary = {
             word: next(reindexer)
             for word in self.vocabulary.keys()
-            if word in self.model.key_to_index
+            if word in model.key_to_index
         }
+
+        self.embeddings = {
+            word: model[word]
+            for word in self.vocabulary
+        }
+
+        self.n_features = model.vector_size
+
+        return self
 
 
     def transform(self, X):
@@ -217,10 +222,10 @@ class TfIdfEmbeddingVectorizer(TfIdfCustomVectorizer):
             }
 
             # Compute sentence embedding as weighted sum of word embeddings
-            doc_embedding = np.zeros(self.model.vector_size)
+            doc_embedding = np.zeros(self.n_features)
 
             for word, tfidf in bow_doc_normalized.items():
-                doc_embedding = doc_embedding + self.model[word] * tfidf
+                doc_embedding = doc_embedding + self.embeddings[word] * tfidf
             
             X_transformed.append(doc_embedding)
         
