@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import scipy as sp
+from pyemd import emd
 
 from collections import defaultdict
 from enum import Enum
@@ -69,6 +70,41 @@ def get_mistakes(clf, X_q1q2, y):
         return incorrect_indices, predictions
 
 
+def bag_of_words(documents, vocabulary, normalize=False):
+    """
+    Function that computes the BOW representation of a collection of documents.
+    """
+    data = []
+    ind_col = []
+    ind_ptr = [0]
+
+    for doc in documents:
+        # Create a bag of words representation for the document
+        bow_doc = defaultdict(int)
+
+        for word in doc:
+            if word in vocabulary:
+                bow_doc[word] += 1
+
+        # Normalize BoW
+        bow_array = np.array(list(bow_doc.values()))
+        bow_norm = np.sum(bow_array) if normalize else 1.0
+
+        bow_doc_normalized = [
+            bow_doc[word] / bow_norm
+            for word in bow_doc.keys()
+        ]
+
+        # Get columns in which the data will be stored
+        cols = [vocabulary[word] for word in bow_doc.keys()]
+
+        data.extend(bow_doc_normalized)
+        ind_col.extend(cols)
+        ind_ptr.append(len(ind_col))
+
+    return np.array(data), np.array(ind_col), np.array(ind_ptr)
+
+
 ################################################################################
 #                         CUSTOM VECTORIZERS                                   #
 ################################################################################
@@ -114,36 +150,21 @@ class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
         X_preprocessed = preprocess(X)
-
-        data = []
-        ind_col = []
-        ind_ptr = [0]
         
-        for doc in X_preprocessed:
-            # Create a bag of words representation for the document
-            # It will contain the sum of the tf-idf values
-            bow_doc = defaultdict(float)
+        data, ind_col, ind_ptr = bag_of_words(X_preprocessed, self.vocabulary)
 
-            for word in doc:
-                if word in self.vocabulary:
-                    idx = self.vocabulary[word]
-                    bow_doc[word] += self.idf[idx]
+        for i in range(len(ind_ptr) - 1):
+            # Get indices of current row and columns in current row
+            current_idx, next_idx = ind_ptr[i], ind_ptr[i+1]
+            cols = ind_col[current_idx:next_idx]
 
-            # Normalize BoW
-            bow_array = np.array(list(bow_doc.values()))
-            bow_norm = np.sqrt(np.dot(bow_array, bow_array))
+            bow_doc = data[current_idx:next_idx]
+            bow_doc_tfidf = bow_doc * self.idf[cols]
 
-            bow_doc_normalized = [
-                bow_doc[word] / bow_norm
-                for word in bow_doc.keys()
-            ]
+            doc_norm = np.sqrt(np.dot(bow_doc_tfidf, bow_doc_tfidf))
+            bow_doc_norm = bow_doc_tfidf / doc_norm
 
-            # Get columns in which the data will be stored
-            cols = [self.vocabulary[word] for word in bow_doc.keys()]
-
-            data.extend(bow_doc_normalized)
-            ind_col.extend(cols)
-            ind_ptr.append(len(ind_col))
+            data[current_idx:next_idx] = bow_doc_norm
         
         X_transformed = sp.sparse.csr_matrix(
             (data, ind_col, ind_ptr),
@@ -249,3 +270,12 @@ class TfIdfEmbeddingVectorizer(TfIdfCustomVectorizer):
         X_transformed = np.array(X_transformed)
 
         return X_transformed
+
+
+################################################################################
+#                               DISTANCES                                      #
+################################################################################
+
+
+def word_movers_distance(X_q1, X_q2, vocabulary, model):
+    pass
