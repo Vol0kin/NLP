@@ -165,7 +165,7 @@ class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
             bow_doc_norm = bow_doc_tfidf / doc_norm
 
             data[current_idx:next_idx] = bow_doc_norm
-        
+
         X_transformed = sp.sparse.csr_matrix(
             (data, ind_col, ind_ptr),
             shape=(len(X), len(self.vocabulary))
@@ -264,7 +264,7 @@ class TfIdfEmbeddingVectorizer(TfIdfCustomVectorizer):
 
             for word, tfidf in bow_doc_normalized.items():
                 doc_embedding = doc_embedding + self.model[word] * tfidf
-            
+
             X_transformed.append(doc_embedding)
         
         X_transformed = np.array(X_transformed)
@@ -277,5 +277,70 @@ class TfIdfEmbeddingVectorizer(TfIdfCustomVectorizer):
 ################################################################################
 
 
-def word_movers_distance(X_q1, X_q2, vocabulary, model):
-    pass
+def cosine(X, Y):
+    norm = (np.linalg.norm(X, axis=1) * np.linalg.norm(Y, axis=1))
+    return 1 - np.einsum('ij,ij->i', X, Y) / np.where(norm==0, 1, norm)
+
+
+def manhattan(X, Y):
+    return np.linalg.norm(X - Y, ord=1, axis=1)
+
+
+def euclid(X, Y):
+    return np.linalg.norm(X - Y, ord=2, axis=1)
+
+
+def word_movers_distance(doc1, doc2, model):
+    doc1_tokens = [token for token in set(doc1) if token in model.key_to_index]
+    doc2_tokens = [token for token in set(doc2) if token in model.key_to_index]
+
+    len_tokens_doc1 = len(doc1_tokens)
+    len_tokens_doc2 = len(doc2_tokens)
+
+    # If some of the documents is empty, then the required work to move from
+    # one to another is 0
+    if len_tokens_doc1 == 0 or len_tokens_doc2 == 0:
+        return 0
+
+    vocabulary = {
+        word: idx
+        for idx, word in enumerate(list(set(doc1_tokens) | set(doc2_tokens)))
+    }
+
+    doc1_idx = [vocabulary[word] for word in doc1_tokens]
+    doc2_idx = [vocabulary[word] for word in doc2_tokens]
+
+    doc1_embeddings = np.array([model[word] for word in doc1_tokens])
+    doc2_embeddings = np.array([model[word] for word in doc2_tokens])
+
+    doc1_embeddings = np.repeat(doc1_embeddings, len_tokens_doc2, axis=0)
+    doc2_embeddings = np.tile(
+        doc2_embeddings.reshape(-1,),
+        len_tokens_doc1
+    ).reshape(-1, model.vector_size)
+
+    vocabulary_len = len(vocabulary)
+
+    # The distances have to be computed for each pair of embeddings
+    # np.ix_ allows to create a mesh to quickly update the necessary entries,
+    # but the output has to be properly reshaped
+    distances = np.zeros((vocabulary_len, vocabulary_len))
+    distances[np.ix_(doc1_idx, doc2_idx)] = euclid(
+        doc1_embeddings,
+        doc2_embeddings
+    ).reshape(
+        len_tokens_doc1,
+        len_tokens_doc2
+    )
+
+    # Get normalized BOW reprsentations of the documents as dense arrays
+    bow_doc1 = np.zeros(vocabulary_len)
+    bow_doc2 = np.zeros(vocabulary_len)
+
+    data_doc1, ind_col_doc1, _ = bag_of_words([doc1], vocabulary, normalize=True)
+    data_doc2, ind_col_doc2, _ = bag_of_words([doc2], vocabulary, normalize=True)
+
+    bow_doc1[ind_col_doc1] = data_doc1
+    bow_doc2[ind_col_doc2] = data_doc2
+
+    return emd(bow_doc1, bow_doc2, distances)
