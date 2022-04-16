@@ -1,0 +1,105 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[english]{babel}					% Use english
+\usepackage[utf8]{inputenc}					% Caracteres UTF-8
+\usepackage{graphicx}						% Imagenes
+\usepackage[hidelinks]{hyperref}			% Poner enlaces sin marcarlos en rojo
+\usepackage{fancyhdr}						% Modificar encabezados y pies de pagina
+\usepackage{float}							% Insertar figuras
+\usepackage[textwidth=390pt]{geometry}		% Anchura de la pagina
+\usepackage[nottoc]{tocbibind}				% Referencias (no incluir num pagina indice en Indice)
+\usepackage{enumitem}						% Permitir enumerate con distintos simbolos
+\usepackage[T1]{fontenc}					% Usar textsc en sections
+\usepackage{amsmath}						% Símbolos matemáticos
+
+% Comando para poner el nombre de la asignatura
+\newcommand{\subject}{Natural Language Processing}
+\newcommand{\autor}{Vladislav Nikolov Vasilev}
+\newcommand{\titulo}{Assignment 1}
+\newcommand{\subtitulo}{Quora challenge}
+\newcommand{\masters}{Master in Fundamental Principles of Data Science}
+
+
+% Configuracion de encabezados y pies de pagina
+% \pagestyle{fancy}
+% \lhead{}
+% \rhead{\subject{}}
+% \lfoot{\masters}
+% \cfoot{}
+% \rfoot{\thepage}
+% \renewcommand{\headrulewidth}{0.4pt}		% Linea cabeza de pagina
+% \renewcommand{\footrulewidth}{0.4pt}		% Linea pie de pagina
+
+\begin{document}
+\pagenumbering{gobble}
+
+% Title page
+\begin{titlepage}
+  \begin{minipage}{\textwidth}
+    \centering
+    \includegraphics[scale=0.25]{img/ub-logo}\\[2cm]
+    
+    \textsc{\Large \subject\\[0.5cm]}
+    \textsc{\uppercase\expandafter{\masters}}\\[1.5cm]
+    
+    \noindent\rule[-1ex]{\textwidth}{1pt}\\[1.5ex]
+    \textsc{{\Huge \titulo\\[0.5ex]}}
+    \textsc{{\Large \subtitulo\\}}
+    \noindent\rule[-1ex]{\textwidth}{2pt}\\[3.5ex]
+  \end{minipage}
+  
+  \vspace{2cm}
+  
+  \begin{minipage}{\textwidth}
+    \centering
+    
+    \includegraphics[scale=0.4]{img/ub-ds-logo}
+    \vspace{2cm}
+    
+    \textbf{Authors}\\ {Irene Bonafonte Pardàs}\\{Otis Carpay}\\{Vladislav Nikolov Vasilev}\\[2.5ex]
+    \textsc{Faculty of Mathematics and Computer Science}\\
+    \vspace{1em}
+    \textsc{Academic year 2021-2022}
+  \end{minipage}
+\end{titlepage}
+
+\pagenumbering{arabic}
+\tableofcontents
+\thispagestyle{empty}				% No usar estilo en la pagina de indice
+
+\newpage
+
+\section{Introduction}
+
+In this assignment we are going to try to solve the Quora Question Pairs challenge. Given a pair
+of questions, we have to automatically determine whether they are semantically equivalent or not.
+The goal of this is to reduce the number of duplicate questions and improve the overall user experience.
+
+In order to solve this challenge, we are fist going to try a simple solution which will allow us
+to get a better understanding of the problem and identify possible flaws. After that, we are
+going to refine this initial solution in hopes of obtaining a model that is more robust and better
+able to identify duplicate questions.
+
+\section{Simple solution}
+
+\section{Improved feature vectors and distances}
+
+\subsection{Irene's features}
+
+\subsection{Otis' features}
+
+\subsection{Vladislav's features}
+
+\section{Final results}
+
+\newpage
+
+\begin{thebibliography}{5}
+
+\bibitem{nombre-referencia}
+Texto referencia
+\\\url{https://url.referencia.com}
+
+\end{thebibliography}
+
+\end{document}
+
