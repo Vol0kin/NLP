@@ -2,6 +2,7 @@
 \usepackage[english]{babel}					% Use english
 \usepackage[utf8]{inputenc}					% Caracteres UTF-8
 \usepackage{graphicx}						% Imagenes
+\usepackage{xurl}
 \usepackage[hidelinks]{hyperref}			% Poner enlaces sin marcarlos en rojo
 \usepackage{fancyhdr}						% Modificar encabezados y pies de pagina
 \usepackage{float}							% Insertar figuras
@@ -10,6 +11,37 @@
 \usepackage{enumitem}						% Permitir enumerate con distintos simbolos
 \usepackage[T1]{fontenc}					% Usar textsc en sections
 \usepackage{amsmath}						% Símbolos matemáticos
+\usepackage[square,numbers]{natbib}
+\bibliographystyle{abbrvnat}
+
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=4
+}
+
+\lstset{style=mystyle, language=Python}
 
 % Comando para poner el nombre de la asignatura
 \newcommand{\subject}{Natural Language Processing}
@@ -115,7 +147,27 @@ Because this approach is quite simple, it has some inherent limitations:
 
 \section{Improved solution}
 
-\subsection{Creating better feature vectors and distances}
+In order to improve our model and methodology, we are going to do a series of changes
+to the simple solution that we already have:
+
+\begin{enumerate}
+  \item We are going to apply some text preprocessing in order to remove some
+  unnecessary tokens.
+  \item We are going to create new feature vectors and distances, which
+  will allow us to better represent the text.
+  \item We are going to try different models to see how each one of of them performs.
+\end{enumerate}
+
+\subsection{Preprocessing the text}
+
+Explain what we did (if we ended up doing something; if not, remove this section
+and any reference from the previous paragraph)
+
+\subsection{Creating new feature vectors and distances}
+
+Next, let's talk about the new feature vectors and distances that we have implemented.
+Each one of us has worked on different features, so we are going to briefly talk about
+our work in the next sections.
 
 \subsubsection{Irene's features}
 
@@ -123,17 +175,326 @@ Because this approach is quite simple, it has some inherent limitations:
 
 \subsubsection{Vladislav's features}
 
+I have implemented two new feature vectors and a distance. The first feature vector
+is the \textbf{tf-idf}, for which I created a custom class that is able to learn the
+vocabulary and the idf values of a corpus. Later on, it will use this
+information to transform the input documents to sparse matrices containing the
+tf-idf values. The code can be seen below:
+
+\begin{lstlisting}
+class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
+    def _fit(self, X):
+        n_docs = len(X)
+
+        i = 0
+        self.vocabulary = {}
+        word_counts = defaultdict(int)
+        
+        for doc in X:
+            words_in_document = set()
+
+            for word in doc:
+                if word not in self.vocabulary:
+                    self.vocabulary[word] = i
+                    i += 1
+                
+                words_in_document.add(word)
+
+            for word in words_in_document:
+                word_counts[word] += 1
+        
+        word_count_array = np.zeros(len(self.vocabulary))
+        
+        for word, idx in self.vocabulary.items():
+            word_count_array[idx] = word_counts[word]
+
+        self.idf = np.log((n_docs) / (1 + word_count_array)) + 1
+
+
+    def fit(self, X):
+        X_processed = preprocess(X)
+        self._fit(X_processed)
+
+        return self
+    
+
+    def transform(self, X):
+        X_preprocessed = preprocess(X)
+        
+        data, ind_col, ind_ptr = bag_of_words(
+        	X_preprocessed,
+        	self.vocabulary
+        )
+
+        for i in range(len(ind_ptr) - 1):
+            current_idx, next_idx = ind_ptr[i], ind_ptr[i+1]
+            cols = ind_col[current_idx:next_idx]
+
+            bow_doc = data[current_idx:next_idx]
+            bow_doc_tfidf = bow_doc * self.idf[cols]
+
+            doc_norm = np.sqrt(np.dot(bow_doc_tfidf, bow_doc_tfidf))
+            bow_doc_norm = bow_doc_tfidf / doc_norm
+
+            data[current_idx:next_idx] = bow_doc_norm
+
+        X_transformed = sp.sparse.csr_matrix(
+            (data, ind_col, ind_ptr),
+            shape=(len(X), len(self.vocabulary))
+        )
+
+        return X_transformed
+    
+
+    def fit_transform(self, X):
+        self.fit(X)
+        X_transformed = self.transform(X)
+
+        return X_transformed
+\end{lstlisting}
+
+As we can see, this class inherits from two base classes from \texttt{scikit-learn}
+and implements the same methods them. This means that it could be used in a pipeline
+without any kind of problems. One important thing that I would like to remark is that
+the formula for the idf value that I have used is the smoothed inverse document frequency,
+which is the following:
+
+\begin{equation}
+  \text{idf} = \log\left( \frac{|X|}{1 + |X_w|} \right) + 1
+\end{equation}
+
+\noindent where $|X|$ is the corpus size and $|X_w|$ is the number of documents containing
+the word $w$. This version of the formula is always greater than zero. The formula
+that \texttt{scikit-learn} uses is similar to this one, but adding an extra document
+to the numerator.
+
+In order to create the bag-of-words representation of the text, I have used the
+following function:
+
+\begin{lstlisting}
+def bag_of_words(documents, vocabulary, normalize=False):
+    data = []
+    ind_col = []
+    ind_ptr = [0]
+
+    for doc in documents:
+        bow_doc = defaultdict(int)
+
+        for word in doc:
+            if word in vocabulary:
+                bow_doc[word] += 1
+
+        bow_array = np.array(list(bow_doc.values()))
+        bow_norm = np.sum(bow_array) if normalize else 1.0
+
+        bow_doc_normalized = [
+            bow_doc[word] / bow_norm
+            for word in bow_doc.keys()
+        ]
+
+        cols = [vocabulary[word] for word in bow_doc.keys()]
+
+        data.extend(bow_doc_normalized)
+        ind_col.extend(cols)
+        ind_ptr.append(len(ind_col))
+
+    return np.array(data), np.array(ind_col), np.array(ind_ptr)
+\end{lstlisting}
+
+This function can also create the normalized version of the bag-of-words representation,
+which means that the sum of the frequencies of a given document is one. This will become
+very useful later on.
+
+The second feature vector that I implemented is a combination of the previous tf-idf
+representation and word embeddings. The idea is to compute both the the tf-idf values and
+the embedding vectors of the words in a document. Then, we weight these vectors by multiplying
+them by the corresponding tf-idf values and we sum them, thus creating an embedding
+of the sentence. I believe that this embedding will retain some semantic information
+of the input sentence, and can be later on used to compute other distances. Also,
+I believe that it makes sense that the embedding of a sentence is computed as the
+combination of the embeddings of the individual words.
+
+Like in the previous case, this has been implemented as a class that can learn the
+necessary information and then transform the input text. The implementation of this
+class is the following:
+
+\begin{lstlisting}
+class TfIdfEmbeddingVectorizer(TfIdfCustomVectorizer):
+    def __init__(self, embeddings_type=None):
+        super().__init__()
+
+        self.embeddings_type = embeddings_type
+
+        # Load embeddings
+        if self.embeddings_type is None:
+            self.model = api.load('word2vec-google-news-300')
+        else:
+            self.model = KeyedVectors.load(self.embeddings_type)
+
+
+    def fit(self, X):
+        X_preprocessed = preprocess(X)
+
+        # Generate vocabulary and idf values
+        self._fit(X_preprocessed)
+
+        # Generator used for indexing
+        def index_generator(max_idx):
+            idx = 0
+
+            while idx < max_idx:
+                yield idx
+                idx += 1
+
+        reindexer = index_generator(len(self.vocabulary))
+
+        idf_valid_idx = [
+            self.vocabulary[word]
+            for word in self.vocabulary.keys()
+            if word in self.model.key_to_index
+        ]
+
+        self.idf = self.idf[idf_valid_idx]
+
+        self.vocabulary = {
+            word: next(reindexer)
+            for word in self.vocabulary.keys()
+            if word in self.model.key_to_index
+        }
+
+        return self
+
+
+    def transform(self, X):
+        X_preprocessed = preprocess(X)
+        X_transformed = []
+        
+        for doc in X_preprocessed:
+            bow_doc = defaultdict(float)
+
+            for word in doc:
+                if word in self.vocabulary:
+                    idx = self.vocabulary[word]
+                    bow_doc[word] += self.idf[idx]
+
+            bow_array = np.array(list(bow_doc.values()))
+            bow_norm = np.sqrt(np.dot(bow_array, bow_array))
+
+            bow_doc_normalized = {
+                word: bow_doc[word] / bow_norm
+                for word in bow_doc.keys()
+            }
+
+            doc_embedding = np.zeros(self.model.vector_size)
+
+            for word, tfidf in bow_doc_normalized.items():
+                doc_embedding = doc_embedding + self.model[word] * tfidf
+
+            X_transformed.append(doc_embedding)
+        
+        X_transformed = np.array(X_transformed)
+
+        return X_transformed
+\end{lstlisting}
+
+We can see that this class inherits from the one that we previously defined. This
+is due the fact that it uses almost the same information (vocabulary and idf values).
+We only need to post-process the vocabulary and the idf values removing the ones
+that don't have an actual embedding. For storing, getting and using the embeddings,
+we have decided to use the \texttt{gensim} package, which contains pretrained models
+and allows us to create our own embeddings.
+
+Finally, I implemented the Word Mover's Distance (WMD)\cite{pmlr-v37-kusnerb15},
+which is an instance of the Earth Mover's Distance (EMD) for the task of computing
+distances between documents. Very simply put, it computes the distance that the
+embeddings of the words of a document have to be moved in order to reach the embeddings
+of the words of another document. Because the embeddings can retain the semantic
+information of the words, two words that have similar meanings are expected to be
+close. Using this distance, we could get small values for similar questions,
+whereas the distance for different questions is expected to be large (although
+this may not always be true).
+
+The implementation is heavily inspired by \texttt{gensim}'s implementation of the
+WMD\footnote{Source: \url{https://github.com/RaRe-Technologies/gensim/blob/05ca318eebf934cd87c019d94bf4fab25ead802a/gensim/models/keyedvectors.py\#L917}}.
+I did some modifications to it so that it is compatible with our previously defined
+functions and it better suits our problem and data structures. In order
+to solve the EMD problem, I used the solver provided by \texttt{pyemd}, because
+coding one from scratch would suppose to be very tedious, inefficient, error-prone
+and difficult to be properly tested. The implementation of the WMD can be seen below:
+
+\begin{lstlisting}
+def word_movers_distance_document_pair(doc1, doc2, model):
+    doc1_tokens = [token for token in set(doc1) if token in model.key_to_index]
+    doc2_tokens = [token for token in set(doc2) if token in model.key_to_index]
+
+    len_tokens_doc1 = len(doc1_tokens)
+    len_tokens_doc2 = len(doc2_tokens)
+
+    if len_tokens_doc1 == 0 or len_tokens_doc2 == 0:
+        return 0
+
+    vocabulary = {
+        word: idx
+        for idx, word in enumerate(list(set(doc1_tokens) | set(doc2_tokens)))
+    }
+
+    doc1_idx = [vocabulary[word] for word in doc1_tokens]
+    doc2_idx = [vocabulary[word] for word in doc2_tokens]
+
+    doc1_embeddings = np.array([model[word] for word in doc1_tokens])
+    doc2_embeddings = np.array([model[word] for word in doc2_tokens])
+
+    doc1_embeddings = np.repeat(doc1_embeddings, len_tokens_doc2, axis=0)
+    doc2_embeddings = np.tile(
+        doc2_embeddings.reshape(-1,),
+        len_tokens_doc1
+    ).reshape(-1, model.vector_size)
+
+    vocabulary_len = len(vocabulary)
+
+    distances = np.zeros((vocabulary_len, vocabulary_len))
+    distances[np.ix_(doc1_idx, doc2_idx)] = euclid(
+        doc1_embeddings,
+        doc2_embeddings
+    ).reshape(
+        len_tokens_doc1,
+        len_tokens_doc2
+    )
+
+    # Get normalized BOW reprsentations of the documents as dense arrays
+    bow_doc1 = np.zeros(vocabulary_len)
+    bow_doc2 = np.zeros(vocabulary_len)
+
+    data_doc1, ind_col_doc1, _ = bag_of_words([doc1], vocabulary, normalize=True)
+    data_doc2, ind_col_doc2, _ = bag_of_words([doc2], vocabulary, normalize=True)
+
+    bow_doc1[ind_col_doc1] = data_doc1
+    bow_doc2[ind_col_doc2] = data_doc2
+
+    return emd(bow_doc1, bow_doc2, distances)
+
+
+def word_movers_distance(X_q1, X_q2, model):
+    return np.array([
+        word_movers_distance_document_pair(doc1, doc2, model)
+        for doc1, doc2 in zip(X_q1, X_q2)
+    ])
+\end{lstlisting}
+
 \section{Final results}
 
-\newpage
+\nocite{*}
+\bibliography{bibliography}
 
-\begin{thebibliography}{5}
+% \newpage
 
-\bibitem{nombre-referencia}
-Texto referencia
-\\\url{https://url.referencia.com}
+% \begin{thebibliography}{5}
 
-\end{thebibliography}
+% \bibitem{nombre-referencia}
+% Texto referencia
+% \\\url{https://url.referencia.com}
+
+% \end{thebibliography}
 
 \end{document}
 
