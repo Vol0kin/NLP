@@ -171,8 +171,6 @@ our work in the next sections.
 
 \subsubsection{Irene's features}
 
-\subsubsection{Otis' features}
-
 \subsubsection{Vladislav's features}
 
 I have implemented two new feature vectors and a distance. The first feature vector
@@ -480,6 +478,28 @@ def word_movers_distance(X_q1, X_q2, model):
         for doc1, doc2 in zip(X_q1, X_q2)
     ])
 \end{lstlisting}
+
+\subsubsection{Otis' features}
+
+The similarity between the sentences can directly be computed using metric measures on the embeddings computed using tf-idf and WMD presented in Vladislav's section. Two logical candidates are the Euclidean and Manhattan distance, or $\lVert \mathbf{A} - \mathbf{B}\rVert_2$ and $\lVert \mathbf{A} - \mathbf{B}\rVert_1$ respectively.
+
+An alternative measures is the cosine similarity, which is a popular measure in the domain of NLP. This uses the property of the embedding space as an inner product space and combines the angle between two vectors. As a result, the magnitude is irrelevant. The cosine similarity is written as
+
+$$
+\cos(\theta)=\frac{\mathbf A\cdot \mathbf B}{\lVert \mathbf{A} \rVert \lVert \mathbf{B}\rVert},
+$$
+where the right side of the equation expresses its computation. As the cosine similarity is a similarity measure and not a distance, larger values signify a lower distance. The range is from 0 to 1.
+
+The corresponding functions can be found in the \texttt{utils.py} file. 
+
+As the above metrics are a direct representation of the similarity between sentences, we can use them as the sole predictor of equivalence and plot their ROC curve and compute the AUC. The result can be found in figure \ref{fig:roc}. Apparently, in this case the cosine similarity is the weakest measure, which is surprising considering its wide usage in word2vec embeddings compared to the other measures. The other measures perform similarly, with the highest AUC of 0.7401 produced by Euclidean distance.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\textwidth]{img/roc}
+    \caption{ROC curve for the various distance measures between the  as predictors on the validation set. The AUC is given between parentheses}
+    \label{fig:roc}
+\end{figure}
 
 \section{Final results}
 
