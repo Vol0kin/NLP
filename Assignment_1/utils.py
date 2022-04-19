@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import scipy as sp
+import sklearn
 from pyemd import emd
 
 from collections import defaultdict
@@ -12,17 +13,14 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from gensim.models import KeyedVectors
 import gensim.downloader as api
 
+from scipy.sparse import dok_matrix
+from tqdm import tqdm
+from scipy.sparse.linalg import svds
+import altair as alt
+
 ################################################################################
 #                            UTILS FUNCTIONS                                   #
 ################################################################################
-
-def preprocess(strings):
-    """
-    Takes a list and preprocesses and tokenizes strings
-    """
-    transform = CountVectorizer().build_analyzer()
-    return [transform(str(s)) for s in strings]
-
 
 def cast_list_as_strings(mylist):
     """
@@ -43,12 +41,12 @@ def get_features_from_df(df, count_vectorizer):
     """
     q1_casted =  cast_list_as_strings(list(df["question1"]))
     q2_casted =  cast_list_as_strings(list(df["question2"]))
-    
+
     ############### Begin exercise ###################
     # what is kaggle                  q1
     # What is the kaggle platform     q2
     X_q1 = count_vectorizer.transform(q1_casted)
-    X_q2 = count_vectorizer.transform(q2_casted)    
+    X_q2 = count_vectorizer.transform(q2_casted)
     X_q1q2 = sp.sparse.hstack((X_q1,X_q2))
     ############### End exercise ###################
 
@@ -59,15 +57,23 @@ def get_mistakes(clf, X_q1q2, y):
 
     ############### Begin exercise ###################
     predictions = clf.predict(X_q1q2)
-    incorrect_predictions = predictions != y 
+    incorrect_predictions = predictions != y
     incorrect_indices,  = np.where(incorrect_predictions)
-    
+
     ############### End exercise ###################
-    
+
     if np.sum(incorrect_predictions)==0:
         print("no mistakes in this df")
     else:
         return incorrect_indices, predictions
+
+
+def preprocess(strings):
+    """
+    Takes a list and preprocesses and tokenizes strings
+    """
+    transform = CountVectorizer().build_analyzer()
+    return [transform(str(s)) for s in strings]
 
 
 def bag_of_words(documents, vocabulary, normalize=False):
@@ -104,6 +110,15 @@ def bag_of_words(documents, vocabulary, normalize=False):
 
     return np.array(data), np.array(ind_col), np.array(ind_ptr)
 
+def tpr_fpr(p, dist, y_true):
+    """
+    return the true positive rate and false positive rate for a distance
+    at a certain threshold
+    """
+    accurate = y_true == (dist < p)
+    tpr = accurate[y_true == 1].mean()
+    fpr = 1 - accurate[y_true == 0].mean()
+    return tpr, fpr
 
 ################################################################################
 #                         CUSTOM VECTORIZERS                                   #
@@ -182,7 +197,8 @@ class TfIdfCustomVectorizer(BaseEstimator, TransformerMixin):
 
 
 class EmbeddingType(str, Enum):
-    WORD2VEC = 'embeddings/word2vec.kv'
+    WORD2VEC = 'embeddings/word2vec-google-news-300.kv'
+    COOCCURRANCE_SVD = 'embeddings/kv_cooccurrance_svd.kv'
 
 
 class TfIdfEmbeddingVectorizer(TfIdfCustomVectorizer):
@@ -271,11 +287,145 @@ class TfIdfEmbeddingVectorizer(TfIdfCustomVectorizer):
 
         return X_transformed
 
+    
 
+    
+class cooccurrance_embeddings():
+    def __init__(self, corpus, preprocess_function):
+        self.corpus = corpus
+        self.preprocess = preprocess_function
+    
+    def fit(self, n_components=100, store=True):
+        print("computing coocurrance matrix")
+        self.compute_cooccurrance()
+        print("SVM decomposition")
+        self.svm(n_components, store)
+
+        return self
+
+    def compute_cooccurrance(self):
+        
+        # Fit count vectorizer
+        count_vectorizer = sklearn.feature_extraction.text.CountVectorizer(ngram_range=(1,1))
+        count_vectorizer.fit(self.corpus)
+        self.idx = count_vectorizer.vocabulary_
+              
+        # Preprocess questions
+        self.corpus = self.preprocess(self.corpus)
+        
+        # Initialize sparse squared empty matrix to store
+        # co-occurrance between words in our vocabulary
+        self.cOc_embd = dok_matrix((len(self.idx), len(self.idx)), dtype=np.int8)
+        
+        # Compute co-occurrances
+        for question in tqdm(self.corpus):
+            word_ids = list(set([self.idx[word] for word in question]))
+            self.cOc_embd[word_ids,word_ids] += 1
+        
+        self.cOc_embd = self.cOc_embd.asfptype()
+        
+            
+    def svm(self, n_components, store):
+        self.svm_results = {}
+        self.svm_results['u'], self.svm_results['s'], self.svm_results['vT'] = svds(self.cOc_embd, k=n_components)
+        
+        # Join with words indices
+        idx_df = pd.DataFrame({'words': self.idx.keys(), 'key': self.idx.values()}, index=self.idx.values())
+        self.svm_loadings = pd.DataFrame(self.svm_results['u'], index=[i+1 for i in range(0,len(self.idx))])
+        self.svm_loadings = idx_df.merge(self.svm_loadings, left_index=True, right_index=True)
+
+        # Store as keyed vectors
+        self.svm_model = KeyedVectors(self.svm_results['u'].shape[1])
+        self.svm_model.add_vectors(self.svm_loadings.words.values, self.svm_loadings.iloc[:,2:self.svm_loadings.shape[1]].to_numpy())
+        
+        if store:
+            self.svm_model.save('embeddings/kv_coocurrance_svm.kv')
+            
+            
+    def pca_2q_plot(self, q1, q2):
+        q1, q2 = self.preprocess(q1), self.preprocess(q2)
+        pca_df = pd.DataFrame({'Word': q1+q2,
+                        'PC1': np.r_[self.svm_model[q1][:,0],self.svm_model[q2][:,0]],
+                        'PC2': np.r_[self.svm_model[q1][:,0],self.svm_model[q2][:,0]],
+                        'Question': ['Q1' for i in range(len(q1))]+['Q2' for i in range(len(q2))]})
+         
+        chrt = alt.Chart(pca_df).mark_point(filled=True).encode(
+            x=alt.X('PC1:Q', axis=alt.Axis(title='PC1')),
+            y=alt.Y('PC2:Q', axis=alt.Axis(title='PC2')),
+            color=alt.Color('Question:N'),
+            tooltip='Word'
+        ).properties(
+            width=300,
+            height=300
+        )
+
+        display(chrt)
+        
+    def explained_variance_plot(self):
+        explained_var_df = pd.DataFrame({'Component': np.arange(self.svm_results['s'].shape[0])+1, 
+                                         'Explained variance': self.svm_results['s']})
+        
+        chrt = alt.Chart(explained_var_df).mark_point(size=6).encode(
+            alt.X('Component:O'),
+            y='Explained variance:Q',
+            tooltip=['Component', 'Explained variance']
+        ).properties(
+            width=600,
+            height=200
+        )        
+        
+        display(chrt)
+        
+    
+class QuoraTransformer:
+    def __init__(self, embeddings_type=None):
+        self.embeddings_type = embeddings_type
+        
+    def fit(self, df ):
+        all_questions = list(df["question1"]) + list(df["question2"])
+        self.vectorizer = TfIdfEmbeddingVectorizer(self.embeddings_type).fit(all_questions)
+        return self
+    
+    def transform(self, df):
+        q1 = preprocess(df['question1'])
+        q2 = preprocess(df['question2'])
+                        
+        embeddings = [
+            self.vectorizer.transform(q1),
+            self.vectorizer.transform(q2)
+        ]   
+                        
+        return np.c_[            
+            embeddings[0],
+            embeddings[1],
+            
+            cosine(*embeddings),
+            manhattan(*embeddings),
+            euclid(*embeddings),
+            
+            jaccard(q1, q2),
+            
+            word_movers_distance(q1, q2, KeyedVectors.load(self.embeddings_type))
+        ]
+
+    
+class QuoraBaselineTransformer:
+        
+    def fit(self, df ):
+        all_questions = list(df["question1"]) + list(df["question2"])
+        self.vectorizer = sklearn.feature_extraction.text.CountVectorizer(ngram_range=(1,1)).fit(all_questions)               
+        
+        return self
+    
+    def transform(self, df):
+        return sp.sparse.hstack((
+            self.vectorizer.transform(df["question1"]),
+            self.vectorizer.transform(df["question2"])
+        ))
+    
 ################################################################################
 #                               DISTANCES                                      #
 ################################################################################
-
 
 def cosine(X, Y):
     norm = (np.linalg.norm(X, axis=1) * np.linalg.norm(Y, axis=1))
@@ -289,6 +439,12 @@ def manhattan(X, Y):
 def euclid(X, Y):
     return np.linalg.norm(X - Y, ord=2, axis=1)
 
+def jaccard(q1, q2):
+    result = np.zeros(len(q1))
+    for i in range(len(q1)):
+        X, Y = set(q1[i]), set(q2[i])
+        result[i] = len(X.intersection(Y)) / max(len(X.union(Y)), 1)
+    return result
 
 def word_movers_distance_document_pair(doc1, doc2, model):
     """
@@ -348,7 +504,6 @@ def word_movers_distance_document_pair(doc1, doc2, model):
 
     return emd(bow_doc1, bow_doc2, distances)
 
-
 def word_movers_distance(X_q1, X_q2, model):
     """
     Function used to compute the Word Mover's Distance between a collection of
@@ -358,3 +513,5 @@ def word_movers_distance(X_q1, X_q2, model):
         word_movers_distance_document_pair(doc1, doc2, model)
         for doc1, doc2 in zip(X_q1, X_q2)
     ])
+
+    
