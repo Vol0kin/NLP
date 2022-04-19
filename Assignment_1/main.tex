@@ -12,6 +12,8 @@
 \usepackage[T1]{fontenc}					% Usar textsc en sections
 \usepackage{amsmath}						% Símbolos matemáticos
 \usepackage[square,numbers]{natbib}
+\usepackage{caption}
+\usepackage{subcaption}
 \bibliographystyle{abbrvnat}
 
 \usepackage{listings}
@@ -158,18 +160,15 @@ to the simple solution that we already have:
   \item We are going to try different models to see how each one of of them performs.
 \end{enumerate}
 
-\subsection{Preprocessing the text}
+\subsection{Preprocessing the text (Otis)}
 
-Explain what we did (if we ended up doing something; if not, remove this section
-and any reference from the previous paragraph)
+After short experimentation with different steps of preprocessing the text, we realized that the sklearn's CountVectorizer already contains a powerful preprocessor that can be accessed using the function build\_analyzer(). Besides tokenization, the preprocessor converts words to lowercase and removes very frequent and unfrequent words that are not useful for the model. The main limitation of this preprocessing is that no spell checking is performed. We have also explored the use of lemmatization but it is not very useful with word2vec embeddings, because it contains word inflexions in its vocabulary, and therefore we decided to exclude it from our models.
 
 \subsection{Creating new feature vectors and distances}
 
 Next, let's talk about the new feature vectors and distances that we have implemented.
 Each one of us has worked on different features, so we are going to briefly talk about
 our work in the next sections.
-
-\subsubsection{Irene's features}
 
 \subsubsection{Vladislav's features}
 
@@ -479,6 +478,16 @@ def word_movers_distance(X_q1, X_q2, model):
     ])
 \end{lstlisting}
 
+\subsubsection{Irene's features}
+
+I have implemented a feature vector and a simple distance metric. The feature vector consists on applying singular value decomposition (SVD) to a co-occurrance matrix to generate word representations. A co-occurance matrix is a $n \times n$ matrix where each row contains the embedding of a word $i$, which is the number of times the word co-occurrs in a sentence with all the other words in the vocabulary. The idea behind this is that two words that have a very similar meaning, will often be found in the same context, co-occuring with the same words (e.g. the fruits orange and apple are both likely to be found in the sentence ``I drank a <<fruit>> juice'', together with the words ``drank'' and ``juice''). Therefore, a word is defined by the context where it is used. As this generates a huge sparse matrix, we then apply SVD to capture the main axis of variation of the dataset in a lower dimensional space. 
+As done with the word2vec embeddings, we then represent a sentence as the weighted sum of the embedding of the words it contains. The word embeddings are scaled by multiplying them by the word's TF-IDF values, giving more importance to document-specific words.  For comparability with the selected word2vec embeddings, we have selected the top 300 components to represent the word.
+
+Regarding the implementation, I have used the scipy dok sparse matrix type to compute the co-occurrance matrix, which allows to iteratively update the values of the matrix while storing it on an efficient way. Computing the matrix is as easy as iterating over all the questions in our vocabulary and summing 1 to each pair of words in the sentence. For SVD, I have used the scipy svds function, which operates with sparse matrices. I have also included two functions to visualize the representation of each sentence using the two first components, which allows to explore how well the embeddings are performed. I have observed that the first components capture only a small amount of variation, meaning that the matrix is not very compressible and that we are losing a lot of information. This explains the poor performance obtained 
+with the models based on these embeddings.
+
+I have also implemented the Jaccard similarity metric, which computes the similarity between two sentences as the ratio of the number of common words divided by the total number of unique words. The intersection and the union can be easily computed using python sets.
+
 \subsubsection{Otis' features}
 
 The similarity between the sentences can directly be computed using metric measures on the embeddings computed using tf-idf and WMD presented in Vladislav's section. Two logical candidates are the Euclidean and Manhattan distance, or $\lVert \mathbf{A} - \mathbf{B}\rVert_2$ and $\lVert \mathbf{A} - \mathbf{B}\rVert_1$ respectively.
@@ -488,20 +497,59 @@ An alternative measures is the cosine similarity, which is a popular measure in 
 $$
 \cos(\theta)=\frac{\mathbf A\cdot \mathbf B}{\lVert \mathbf{A} \rVert \lVert \mathbf{B}\rVert},
 $$
-where the right side of the equation expresses its computation. As the cosine similarity is a similarity measure and not a distance, larger values signify a lower distance. The range is from 0 to 1.
+where the right side of the equation expresses its computation. As the cosine similarity is a similarity measure and not a distance, larger values signify a lower distance. We term cosine distance 1 - cosine similarity. The range is from 0 to 1.
 
 The corresponding functions can be found in the \texttt{utils.py} file. 
 
-As the above metrics are a direct representation of the similarity between sentences, we can use them as the sole predictor of equivalence and plot their ROC curve and compute the AUC. The result can be found in figure \ref{fig:roc}. Apparently, in this case the cosine similarity is the weakest measure, which is surprising considering its wide usage in word2vec embeddings compared to the other measures. The other measures perform similarly, with the highest AUC of 0.7401 produced by Euclidean distance.
+\section{Final results (Otis)}
 
+We have chosen to train a logistic regression and an XGBoost classifier with two final models and a baseline. We have decided to use a logistic regression for comparability with the baseline and XGBoost because it is a state of the art classifier that can be easily trained. Our baseline feature vector consists on the bag of words representation of the questions. For our improved solution we have designed two different feature vectors, relying each of them in a different word embedder (co-occurrance-SVD and word2vec). For the two of them, we have computed sentence embeddings from a weighted sum of its word vectors, where the weight is the TF-IDF value for each word. Using these sentence embeddings, we have computed the distance between the questions with four differences distance metrics, and also its jaccard similarity by directly comparing the words. To compute distances between embeddings we have used cosine, Euclidean and Manhattan distance, in addition to WMD. The two sentence embeddings and the 5 distance metrics are concatenated and passed to the logistic and XGBoost classifiers.
+
+As the distance metrics are a direct representation of the similarity between sentences, we can use them as the sole predictor of equivalence and plot their ROC curve and compute the AUC. The results can be found in figure \ref{fig:roc}. Unsurprisingly, we can see that word2vec embeddings perform better than co-occurrance embeddings, as they are more advanced embeddings, trained on a large corpus and able to capture contextual information. As mentioned, our co-occurrance matrix does not allow much compression in terms of variance explained by the first components, which means that a lot of information is lost. Regarding the distance metrics, we can see that the Jaccard index offers a poor performance, which is unsurprising considering that it is a metric that works directly on the sentence, without incorporating any knowledge derived from corpus on words with similar meanings and synonyms. For word2vec the cosine similarity is the weakest measure, which is surprising considering its wide usage in similar embeddings compared to the other measures. The other measures perform similarly, with the highest AUC of 0.7401 produced by Euclidean distance. The WMD performs better than Jaccard distance but worse than the other metrics. In the case of co-occurrance-SVD, we can see that only cosine distance offers a performance better than Jaccard, suggesting that the size of the vectors expresses features irrelevant to the task at hand. As cosine distance is insensitive to vector size, the measure better captures meaningful differences between embeddings. As the data was not scaled before applying the SVD, the values express absolute as opposed to relative quantities meaning that longer sentences have higher values and the euclidean and manhattan distances are incompatible. This could be resolved by normalizing the data.
+
+% add subfigure with validation for co-occurance distances 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.9\textwidth]{img/roc}
-    \caption{ROC curve for the various distance measures between the  as predictors on the validation set. The AUC is given between parentheses}
+    \begin{subfigure}[b]{\textwidth}
+        \centering
+         \includegraphics[width=0.7\textwidth]{img/roc_dist_w2v}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{\textwidth}
+        \centering
+         \includegraphics[width=0.7\textwidth]{img/roc_dist_cooccurrence}
+    \end{subfigure}
+    \caption{ROC curve for the various distance measures between the questions as predictors on the validation set. The AUC is given between parentheses}
     \label{fig:roc}
 \end{figure}
 
-\section{Final results}
+As can be seen in figure \ref{fig:roc-classifier} the model with the best performance is the XGBoost with word2vec embeddings (AUC=0.8765 in validation set), in comparison to a baseline of AUC=0.8096 on logistic regression with BoW embeddings.This is expectable as the word2vec embeddings are more expressive and XGBoost a more powerful classifier. The co-occurrance-SVD embeddings with XGBoost also outperforms the baseline (AUC=0.8407). Interestingly, logistic regression performs worse for either of the two proposed improved embeddings. This means that the BoW embeddings are more linearly separable.
+
+\section{Conclusions}
+
+By using an embedding that better expresses the relationship between words and applying a more complex model, we have attained a considerable improvement over the baseline model. In particular, a TF-IDF weighted sum of word2vec embeddings, combined with several distance metrics and an XGBoost classifier has offered the best performance. We expect that using more sophisticated techniques, for instance recurrent neural networks or transformers, which allow for deeper expression of relationships, would bring even higher improvements.
+
+%figure with validation roc for the three datasets
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{\textwidth}
+        \centering
+         \includegraphics[width=0.6\textwidth]{img/roc_clf_bow}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{\textwidth}
+        \centering
+         \includegraphics[width=0.6\textwidth]{img/roc_clf_w2v}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{\textwidth}
+        \centering
+         \includegraphics[width=0.6\textwidth]{img/roc_clf_cooccurrence}
+    \end{subfigure}
+    \caption{ROC curve for the models combining the different embeddings and distance measures
+    between the questions on the validation set. The AUC is given between parentheses}
+    \label{fig:roc-classifier}
+\end{figure}
 
 \nocite{*}
 \bibliography{bibliography}
