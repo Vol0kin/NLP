@@ -30,7 +30,7 @@ class ExtendedFeatures(IDFeatures):
 
         # Feature: first letter is capitalized
         if word[0].isupper():
-            feat_name = f"cap_init:{y_name}"
+            feat_name = f"cap_init::{y_name}"
             feat_id = self.add_feature(feat_name)
 
             if feat_id != -1:
@@ -39,12 +39,33 @@ class ExtendedFeatures(IDFeatures):
 
         # Feature: is digit
         if str.isdigit(word):
-            feat_name = f"digit:{y_name}"
+            feat_name = f"digit::{y_name}"
             feat_id = self.add_feature(feat_name)
 
             if feat_id != -1:
                 features.append(feat_id)
 
+
+        # Feature: is floating point number
+        try:
+            float(word)
+
+            feat_name = f"float_num::{y_name}"
+            feat_id = self.add(feat_name)
+
+            if feat_id != -1:
+                features.append(feat_id)
+        except ValueError:
+            pass
+
+
+        # Feature: word contains dot
+        if len(word) > 1 and '.' in word:
+            feat_name = f"has_dot::{y_name}"
+            feat_id = self.add(feat_name)
+
+            if feat_id != -1:
+                features.append(feat_id)
 
 
         return features
