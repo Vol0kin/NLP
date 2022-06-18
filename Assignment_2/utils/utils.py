@@ -1,6 +1,50 @@
 import numpy as np
 import pandas as pd
 
+from skseq.sequences.sequence import Sequence
+from skseq.sequences.sequence_list import SequenceList
+
+
+class LabeledSequenceList(SequenceList):
+    def __init__(self, x_dict={}, y_dict={}):
+        super().__init__(x_dict=x_dict, y_dict=y_dict)
+
+
+    def add_sequence(self, x, y, x_dict, y_dict):
+        """Add a sequence to the list, where
+            - x is the sequence of  observations,
+            - y is the sequence of states."""
+        num_seqs = len(self.seq_list)
+        x_ids = [name for name in x]
+        y_ids = [y_dict.get_label_id(name) for name in y]
+        self.seq_list.append(Sequence(x_ids, y_ids))
+
+
+def build_sequence_list(df, word_dict, tag_dict, use_labels=False):
+    """
+    Function used to generate a SequenceList from a pandas DataFrame.
+
+    Args:
+        df: DataFrame containing the training data.
+        word_dict: Dictionary containing the mapping between words and indexes.
+        tag_dict: Dictionary containing the mapping between labels and indexes.
+    
+    Returns:
+        SequenceList containing the sequences from the DataFrame.
+    """
+    train_seq = LabeledSequenceList(word_dict, tag_dict) if use_labels else SequenceList(word_dict, tag_dict)
+
+    for _, group in df.groupby('sentence_id'):
+        seq_x = []
+        seq_y = []
+        for i in range(len(group)):
+            seq_x.append(group.iloc[i].words)
+            seq_y.append(group.iloc[i].tags)
+        train_seq.add_sequence(seq_x, seq_y, train_seq.x_dict, train_seq.y_dict)
+    
+    return train_seq
+
+
 def evaluate_corpus(sequences, sequences_predictions, y_dict, ignore_tag_code=-1):
     import altair as alt
     from sklearn.metrics import f1_score
