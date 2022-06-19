@@ -1,3 +1,5 @@
+import re
+
 from skseq.sequences.id_feature import IDFeatures
 from skseq.sequences.id_feature import UnicodeFeatures
 
@@ -20,7 +22,7 @@ class ExtendedFeatures(IDFeatures):
 
         word = str(x_name)
         # Generate feature name.
-        feat_name = "id:%s::%s" % (word, y_name)
+        feat_name = f"id:{word}::{y_name}"
         # Get feature ID from name.
         feat_id = self.add_feature(feat_name)
         # Append feature.
@@ -29,8 +31,28 @@ class ExtendedFeatures(IDFeatures):
 
 
         # Feature: first letter is capitalized
-        if word[0].isupper():
-            feat_name = f"cap_init::{y_name}"
+        if word.istitle():
+            feat_name = f"init_caps::{y_name}"
+            feat_id = self.add_feature(feat_name)
+
+            if feat_id != -1:
+                features.append(feat_id)
+
+
+        # Feature: all letters are uppercase
+        if word.isupper():
+            feat_name = f"all_caps::{y_name}"
+            feat_id = self.add_feature(feat_name)
+
+            if feat_id != -1:
+                features.append(feat_id)
+
+
+        # Feature: Initialism
+        initialism_pattern = re.compile(r"(\w\.){2,}")
+
+        if bool(initialism_pattern.match(word)):
+            feat_name = f"initialism::{y_name}"
             feat_id = self.add_feature(feat_name)
 
             if feat_id != -1:
@@ -50,7 +72,7 @@ class ExtendedFeatures(IDFeatures):
         try:
             float(word)
 
-            feat_name = f"float_num::{y_name}"
+            feat_name = f"float::{y_name}"
             feat_id = self.add(feat_name)
 
             if feat_id != -1:
