@@ -1,0 +1,72 @@
+         496331062 function calls in 262.630 seconds
+
+   Ordered by: cumulative time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000  262.630  262.630 {built-in method builtins.exec}
+        1    0.000    0.000  262.630  262.630 <string>:1(<module>)
+        1    0.001    0.001  262.630  262.630 structured_perceptron.py:25(fit)
+        1    0.129    0.129  262.629  262.629 structured_perceptron.py:58(fit_epoch)
+    38366    4.617    0.000  262.500    0.007 structured_perceptron.py:95(perceptron_update)
+    38366    0.276    0.000  257.180    0.007 sequence_classifier.py:124(viterbi_decode)
+    38366    0.080    0.000  231.091    0.006 discriminative_sequence_classifier.py:27(compute_scores)
+    38366   91.706    0.002  231.010    0.006 {skseq.sequences.cython.compute_scores.compute_scores}
+231708025  110.695    0.000  128.471    0.000 id_feature.py:113(get_transition_features)
+    38366   11.589    0.000   25.605    0.001 sequence_classification_decoder.py:84(run_viterbi)
+231900148   17.814    0.000   17.814    0.000 {built-in method builtins.len}
+  1831762    1.748    0.000   11.232    0.000 {built-in method numpy.core._multiarray_umath.implement_array_function}
+ 14443521    9.004    0.000   11.076    0.000 id_feature.py:98(get_emission_features)
+   839149    0.731    0.000    8.134    0.000 <__array_function__ internals>:177(amax)
+   839149    0.907    0.000    6.627    0.000 fromnumeric.py:2675(amax)
+   839149    1.322    0.000    5.720    0.000 fromnumeric.py:69(_wrapreduction)
+   839149    0.762    0.000    4.270    0.000 <__array_function__ internals>:177(argmax)
+   839149    3.465    0.000    3.465    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+   839149    0.824    0.000    2.760    0.000 fromnumeric.py:1127(argmax)
+   543643    1.029    0.000    2.072    0.000 id_feature.py:162(add_emission_features)
+   839149    0.624    0.000    1.935    0.000 fromnumeric.py:51(_wrapfunc)
+   839149    1.111    0.000    1.111    0.000 {method 'argmax' of 'numpy.ndarray' objects}
+    76732    0.189    0.000    1.001    0.000 numeric.py:149(ones)
+    76732    0.153    0.000    0.602    0.000 <__array_function__ internals>:177(copyto)
+   839149    0.487    0.000    0.487    0.000 {method 'items' of 'dict' objects}
+   839149    0.446    0.000    0.446    0.000 fromnumeric.py:70(<dictcomp>)
+   543966    0.444    0.000    0.444    0.000 id_feature.py:204(add_feature)
+    76732    0.151    0.000    0.393    0.000 <__array_function__ internals>:177(size)
+   543643    0.258    0.000    0.258    0.000 {method 'format' of 'str' objects}
+  1087898    0.223    0.000    0.223    0.000 label_dictionary.py:22(get_label_name)
+   662618    0.218    0.000    0.218    0.000 id_feature.py:124(get_initial_features)
+    76732    0.209    0.000    0.209    0.000 {built-in method numpy.empty}
+    38366    0.118    0.000    0.208    0.000 sequence.py:24(copy_sequence)
+   839149    0.200    0.000    0.200    0.000 {built-in method builtins.getattr}
+    38366    0.179    0.000    0.179    0.000 {built-in method numpy.zeros}
+   652318    0.162    0.000    0.162    0.000 id_feature.py:131(get_final_features)
+   839149    0.159    0.000    0.159    0.000 fromnumeric.py:1123(_argmax_dispatcher)
+   839149    0.152    0.000    0.152    0.000 fromnumeric.py:2670(_amax_dispatcher)
+   543645    0.104    0.000    0.104    0.000 {built-in method builtins.isinstance}
+    76732    0.097    0.000    0.097    0.000 fromnumeric.py:3206(size)
+    38366    0.074    0.000    0.090    0.000 sequence.py:10(__init__)
+    38366    0.057    0.000    0.069    0.000 sequence_classifier.py:18(get_num_states)
+    38366    0.040    0.000    0.040    0.000 log_domain.py:8(logzero)
+    76732    0.033    0.000    0.033    0.000 fromnumeric.py:3202(_size_dispatcher)
+    76732    0.026    0.000    0.026    0.000 multiarray.py:1071(copyto)
+    39803    0.013    0.000    0.013    0.000 {method 'append' of 'list' objects}
+      289    0.001    0.000    0.001    0.000 id_feature.py:184(add_transition_features)
+        1    0.000    0.000    0.000    0.000 {method 'copy' of 'numpy.ndarray' objects}
+        1    0.000    0.000    0.000    0.000 {built-in method builtins.print}
+        2    0.000    0.000    0.000    0.000 iostream.py:518(write)
+        2    0.000    0.000    0.000    0.000 iostream.py:448(_schedule_flush)
+        1    0.000    0.000    0.000    0.000 iostream.py:202(schedule)
+        1    0.000    0.000    0.000    0.000 socket.py:543(send)
+       17    0.000    0.000    0.000    0.000 id_feature.py:138(add_initial_features)
+       17    0.000    0.000    0.000    0.000 id_feature.py:150(add_final_features)
+        1    0.000    0.000    0.000    0.000 threading.py:1133(is_alive)
+        2    0.000    0.000    0.000    0.000 iostream.py:429(_is_master_process)
+        1    0.000    0.000    0.000    0.000 threading.py:1066(_wait_for_tstate_lock)
+        1    0.000    0.000    0.000    0.000 sequence_list.py:47(size)
+        1    0.000    0.000    0.000    0.000 iostream.py:90(_event_pipe)
+        1    0.000    0.000    0.000    0.000 {method 'acquire' of '_thread.lock' objects}
+        2    0.000    0.000    0.000    0.000 {built-in method posix.getpid}
+        2    0.000    0.000    0.000    0.000 {method 'write' of '_io.StringIO' objects}
+        2    0.000    0.000    0.000    0.000 {method '__exit__' of '_thread.RLock' objects}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+        1    0.000    0.000    0.000    0.000 threading.py:536(is_set)
+        1    0.000    0.000    0.000    0.000 {method 'append' of 'collections.deque' objects}

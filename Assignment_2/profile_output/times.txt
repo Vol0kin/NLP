@@ -1,2 +1,7 @@
 run_viterbi
 original: 3.3 ms ± 135 µs
+refactor loop: 344 µs ± 15.6 µs
+
+compute_scores
+original: 5.33 ms ± 225 µs
+cythonize: 2.83 ms ± 150 µs

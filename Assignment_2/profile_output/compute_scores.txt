@@ -1,38 +1,29 @@
-         13048537 function calls (13048536 primitive calls) in 7.059 seconds
+         12528407 function calls (12528406 primitive calls) in 4.310 seconds
 
    Ordered by: cumulative time
 
    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-        1    0.000    0.000    7.059    7.059 {built-in method builtins.exec}
-        1    0.008    0.008    7.059    7.059 <string>:1(<module>)
-     1000    3.662    0.004    7.049    0.007 discriminative_sequence_classifier.py:25(compute_scores)
-  6058018    2.503    0.000    2.877    0.000 id_feature.py:113(get_transition_features)
-   373354    0.244    0.000    0.492    0.000 id_feature.py:98(get_emission_features)
-6060309/6060308    0.374    0.000    0.374    0.000 {built-in method builtins.len}
-    84422    0.123    0.000    0.249    0.000 id_feature.py:162(add_emission_features)
-    84745    0.051    0.000    0.051    0.000 id_feature.py:204(add_feature)
-    84422    0.034    0.000    0.034    0.000 {method 'format' of 'str' objects}
-   169456    0.029    0.000    0.029    0.000 label_dictionary.py:22(get_label_name)
-    84422    0.011    0.000    0.011    0.000 {built-in method builtins.isinstance}
-     4000    0.010    0.000    0.010    0.000 {built-in method numpy.zeros}
-    17000    0.004    0.000    0.004    0.000 id_feature.py:124(get_initial_features)
-    17000    0.004    0.000    0.004    0.000 id_feature.py:131(get_final_features)
-      289    0.001    0.000    0.001    0.000 id_feature.py:184(add_transition_features)
-     8051    0.001    0.000    0.001    0.000 {method 'append' of 'list' objects}
+        1    0.000    0.000    4.310    4.310 {built-in method builtins.exec}
+        1    0.011    0.011    4.309    4.309 <string>:1(<module>)
+     1000    0.001    0.000    4.290    0.004 discriminative_sequence_classifier.py:27(compute_scores)
+     1000    1.731    0.002    4.289    0.004 {skseq.sequences.cython.compute_scores.compute_scores}
+  6058018    2.033    0.000    2.368    0.000 id_feature.py:113(get_transition_features)
+6059020/6059019    0.335    0.000    0.335    0.000 {built-in method builtins.len}
+   373354    0.183    0.000    0.183    0.000 id_feature.py:98(get_emission_features)
+        1    0.004    0.004    0.005    0.005 {method 'randint' of 'numpy.random.mtrand.RandomState' objects}
+    17000    0.003    0.000    0.003    0.000 id_feature.py:124(get_initial_features)
+    17000    0.003    0.000    0.003    0.000 id_feature.py:131(get_final_features)
+        1    0.002    0.002    0.002    0.002 {method 'seed' of 'numpy.random.mtrand.RandomState' objects}
+        1    0.000    0.000    0.002    0.002 <__array_function__ internals>:177(prod)
+        1    0.000    0.000    0.002    0.002 {built-in method numpy.core._multiarray_umath.implement_array_function}
+        1    0.000    0.000    0.002    0.002 fromnumeric.py:2970(prod)
+        1    0.000    0.000    0.001    0.001 fromnumeric.py:69(_wrapreduction)
      1000    0.001    0.000    0.001    0.000 sequence_list.py:41(__getitem__)
-     1000    0.001    0.000    0.001    0.000 sequence_classifier.py:18(get_num_states)
-        1    0.000    0.000    0.000    0.000 {method 'randint' of 'numpy.random.mtrand.RandomState' objects}
-        1    0.000    0.000    0.000    0.000 <__array_function__ internals>:177(prod)
-        1    0.000    0.000    0.000    0.000 {built-in method numpy.core._multiarray_umath.implement_array_function}
-       17    0.000    0.000    0.000    0.000 id_feature.py:138(add_initial_features)
-        1    0.000    0.000    0.000    0.000 fromnumeric.py:2970(prod)
-        1    0.000    0.000    0.000    0.000 fromnumeric.py:69(_wrapreduction)
-       17    0.000    0.000    0.000    0.000 id_feature.py:150(add_final_features)
-        1    0.000    0.000    0.000    0.000 {method 'seed' of 'numpy.random.mtrand.RandomState' objects}
-        1    0.000    0.000    0.000    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+        1    0.001    0.001    0.001    0.001 {method 'reduce' of 'numpy.ufunc' objects}
+     1000    0.000    0.000    0.001    0.000 sequence_classifier.py:18(get_num_states)
         1    0.000    0.000    0.000    0.000 sequence_list.py:38(__len__)
         1    0.000    0.000    0.000    0.000 fromnumeric.py:70(<dictcomp>)
         1    0.000    0.000    0.000    0.000 {built-in method builtins.getattr}
-        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
         1    0.000    0.000    0.000    0.000 fromnumeric.py:2965(_prod_dispatcher)
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
         1    0.000    0.000    0.000    0.000 {method 'items' of 'dict' objects}

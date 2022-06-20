@@ -102,12 +102,12 @@ class SequenceClassificationDecoder:
 
         # Viterbi loop.
         for pos in range(1, length):
-            for current_state in range(num_states):
-                viterbi_scores[pos, current_state] = \
-                    np.max(viterbi_scores[pos-1, :] + transition_scores[pos-1, current_state, :])
-                viterbi_scores[pos, current_state] += emission_scores[pos, current_state]
-                viterbi_paths[pos, current_state] = \
-                    np.argmax(viterbi_scores[pos-1, :] + transition_scores[pos-1, current_state, :])
+            viterbi_scores[pos] = \
+                np.max(viterbi_scores[pos-1] + transition_scores[pos-1], axis=1)
+            viterbi_scores[pos] += emission_scores[pos]
+            viterbi_paths[pos] = \
+                np.argmax(viterbi_scores[pos-1] + transition_scores[pos-1], axis=1)
+
         # Termination.
         best_score = np.max(viterbi_scores[length-1, :] + final_scores)
         best_path[length-1] = np.argmax(viterbi_scores[length-1, :] + final_scores)
