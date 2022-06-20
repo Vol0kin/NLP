@@ -40,6 +40,71 @@ def build_sequence_list(df, word_dict, tag_dict, use_labels=False):
     return sequence
 
 
+def generate_words_embeddings(words, model):
+    """
+    Function used to generate the embeddings of a list of words using a ML model.
+
+    Args:
+        words: List of words whose embedgins will be generated.
+    
+    Returns:
+        Returns an array containing the embeddings of those words that are found
+        in the model's vocabulary as well as the embedded words.
+    """
+    embeddings = []
+    embedded_words = []
+
+    for word in words:
+        try:
+            embeddings.append(model[word])
+            embedded_words.append(word)
+        except KeyError:
+            pass
+
+    embeddings = np.array(embeddings)
+
+    return embeddings, embedded_words
+
+
+def generate_tiny_test():
+    return [
+        "The programmers from Barcelona might write a sentence without a spell checker .",
+        "The programmers from Barchelona cannot write a sentence without a spell checker .",
+        "Jack London went to Parris .",
+        "Jack London went to Paris .",
+        "Bill gates and Steve jobs never though Microsoft would become such a big company .",
+        "Bill Gates and Steve Jobs never though Microsof would become such a big company .",
+        "The president of U.S.A though they could win the war .",
+        "The president of the United States of America though they could win the war .",
+        "The king of Saudi Arabia wanted total control .",
+        "Robin does not want to go to Saudi Arabia .",
+        "Apple is a great company .",
+        "I really love apples and oranges .",
+        "Alice and Henry went to the Microsoft store to buy a new computer during their trip to New York .",
+    ]
+
+
+def get_affixes():
+    affixes = pd.read_html('http://www.uefap.com/vocab/build/building.htm')
+    prefixes = []
+    suffixes = []
+    for tbl in affixes:
+        if 'Suffix' in tbl.columns:
+            suffixes.append(tbl.Suffix.values)
+        else:
+            prefixes.append(tbl.Prefix.values)
+    
+    suffixes = np.concatenate(suffixes)
+    prefixes = np.concatenate(prefixes)
+    
+    suffixes = [item.split('-') for item in suffixes]
+    suffixes = list(set([item.replace('-','').replace('/','') for sublist in suffixes for item in sublist]))
+    suffixes = [item for item in suffixes if item != '']
+    prefixes = [item.split('/') for item in prefixes]
+    prefixes = list(set([item.replace('-','') for sublist in prefixes for item in sublist]))
+    return suffixes, prefixes
+
+
 def evaluate_corpus(sequences, sequences_predictions, y_dict, ignore_tag_code=-1):
     import altair as alt
     from sklearn.metrics import f1_score
