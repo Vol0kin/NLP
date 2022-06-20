@@ -62,7 +62,7 @@ class ExtendedFeatures(IDFeatures):
 
         # EXTERNAL INFORMATION
         # English most common affixes
-        # suffixes, prefixes = get_affixes()
+        # suffixes, prefixes = get_affixes() # crashes due to too many requests during training
         suffixes = ['able', 'ity', 'en', 'cy', 'less', 'ry', 'ment', 'er', 'ful', 'sion', 'ence', 'ism', 'ness', 'ery', 'ent', 'ant', 'fy', 'ous','ship', 'ate', 'ise', 'al', 'ive', 'tion', 'age', 'ance']
         prefixes = ['sur', 'anti', 'out', 'tri', 'neo', 'under', 'vice', 'over', 'mini', 'bi', 'counter', 'mono', 'auto', 'super', 'be', 'hyper', 'ir', 'inter', 'il', 'mis', 'im', 'sub', 'mal', 'non', 'un', 'ex', 'co', 'kilo', 'semi', 'pseudo', 'trans', 'dis', 'mega', 're', 'ultra', 'fore', 'poly', 'de', 'pre', 'tele', 'in']
 
