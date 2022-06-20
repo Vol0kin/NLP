@@ -32,17 +32,12 @@ def build_sequence_list(df, word_dict, tag_dict, use_labels=False):
     Returns:
         SequenceList containing the sequences from the DataFrame.
     """
-    train_seq = LabeledSequenceList(word_dict, tag_dict) if use_labels else SequenceList(word_dict, tag_dict)
+    sequence = LabeledSequenceList(word_dict, tag_dict) if use_labels else SequenceList(word_dict, tag_dict)
 
     for _, group in df.groupby('sentence_id'):
-        seq_x = []
-        seq_y = []
-        for i in range(len(group)):
-            seq_x.append(group.iloc[i].words)
-            seq_y.append(group.iloc[i].tags)
-        train_seq.add_sequence(seq_x, seq_y, train_seq.x_dict, train_seq.y_dict)
+        sequence.add_sequence(group.words, group.tags, sequence.x_dict, sequence.y_dict)
     
-    return train_seq
+    return sequence
 
 
 def evaluate_corpus(sequences, sequences_predictions, y_dict, ignore_tag_code=-1):
