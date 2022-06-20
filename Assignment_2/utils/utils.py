@@ -28,6 +28,8 @@ def build_sequence_list(df, word_dict, tag_dict, use_labels=False):
         df: DataFrame containing the training data.
         word_dict: Dictionary containing the mapping between words and indexes.
         tag_dict: Dictionary containing the mapping between labels and indexes.
+        use_labels: Boolean flag that controls whether the words should be stored
+                    as labels or indices.    
     
     Returns:
         SequenceList containing the sequences from the DataFrame.
